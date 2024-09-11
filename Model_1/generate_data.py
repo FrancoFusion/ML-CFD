@@ -7,7 +7,7 @@ import torch
 from torch.utils.data import Dataset
 
 class RandomCoolingDataset(Dataset):
-    def __init__(self, num_samples=1000, size=(50, 50)):
+    def __init__(self, num_samples=1000, size=(30, 30)):
         self.num_samples = num_samples
         self.size = size
 
@@ -87,7 +87,7 @@ class RandomCoolingDataset(Dataset):
 
         return boundary_choices[np.random.randint(len(boundary_choices))]
 
-def save_datasets(train_samples=200, test_samples=40, size=(50, 50)):
+def save_datasets(train_samples=200, test_samples=40, size=(30, 30)):
     train_dataset = RandomCoolingDataset(num_samples=train_samples, size=size)
     test_dataset = RandomCoolingDataset(num_samples=test_samples, size=size)
 
@@ -110,4 +110,4 @@ def save_datasets(train_samples=200, test_samples=40, size=(50, 50)):
     print("Train and test datasets saved!")
 
 
-save_datasets(train_samples=200, test_samples=40)
+save_datasets(train_samples=100, test_samples=20, size=(30, 30))
