@@ -1,14 +1,16 @@
 import torch
 
 def generate_sample():
-    
-    # Random input
-    heat_source = torch.randn(30, 30)
-    channel_geometry = torch.randn(30, 30, 30)
+    # Define dimensions
+    D, H, W = 30, 30, 30  # Depth, Height, Width
 
-    # Random output
+    # Random input tensors with matching dimensions
+    heat_source = torch.randn(D, H, W)
+    channel_geometry = torch.randn(D, H, W)
+
+    # Random outputs
     pressure_drop = torch.randn(1)
-    temperature = torch.randn(30, 30, 30)
+    temperature = torch.randn(D, H, W)
 
     # Package sample into dictionary
     sample = {
