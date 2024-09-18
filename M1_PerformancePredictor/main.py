@@ -4,6 +4,7 @@ from torch.utils.data import DataLoader, Dataset
 from architecture import HeatChannelNet
 from loss_fcn import PerformanceCustomLoss
 
+
 # Training parameters
 LEARNING_RATE = 0.001
 NUM_EPOCHS = 20
@@ -30,6 +31,7 @@ class HeatChannelDataset(Dataset):
                 'channel_geometry': self.channel_geometry[idx].unsqueeze(0),
                 'pressure_drop': self.pressure_drop[idx].unsqueeze(0),
                 'temperature': self.temperature[idx].unsqueeze(0)}
+
 
 # Load data
 train_data = torch.load('Data/M1_training_data.pt')
@@ -67,6 +69,7 @@ def train(model_net, train_loader, loss_fcn, optimizer):
     avg_loss = running_loss / len(train_loader)
     return avg_loss
 
+
 # Test loop
 def test(model_net, test_loader, loss_fcn):
     model_net.eval()
@@ -92,4 +95,4 @@ for epoch in range(NUM_EPOCHS):
 
     test_loss = test(model_net, test_loader, loss_fcn)
 
-    print(f'Epoch {epoch + 1} | Train Loss: {train_loss:.6f} | Test Loss: {test_loss:.6f}')
+    print(f'Epoch {epoch + 1} | Train Loss: {train_loss:.4f} | Test Loss: {test_loss:.4f}')

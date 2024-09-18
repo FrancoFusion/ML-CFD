@@ -8,18 +8,18 @@ class HeatChannelNet(nn.Module):
 
         # Shared convolutional layers
         self.conv1 = nn.Conv2d(in_channels=2, out_channels=16, kernel_size=3, stride=1, padding=1)  # Output: (16, 50, 50)
-        self.conv2 = nn.Conv2d(16, 32, kernel_size=3, stride=1, padding=1)  # Output: (32, 50, 50)
-        self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2)  # Output: (32, 25, 25)
-        self.conv3 = nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1)  # Output: (64, 25, 25)
-        self.conv4 = nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1)  # Output: (128, 25, 25)
-        self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2)  # Output: (128, 12, 12)
+        self.conv2 = nn.Conv2d(16, 32, kernel_size=3, stride=1, padding=1)      # Output: (32, 50, 50)
+        self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2)                      # Output: (32, 25, 25)
+        self.conv3 = nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1)      # Output: (64, 25, 25)
+        self.conv4 = nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1)     # Output: (128, 25, 25)
+        self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2)                      # Output: (128, 12, 12)
 
-        # Pressure Drop Branch (Fully Connected Layers)
+        # Pressure drop branch (fully connected layers)
         self.fc1 = nn.Linear(128 * 12 * 12, 256)
         self.fc2 = nn.Linear(256, 64)
-        self.fc3 = nn.Linear(64, 1)  # Scalar output
+        self.fc3 = nn.Linear(64, 1)  # Scalar output = pressure drop
 
-        # Temperature Branch (Convolutional and Upsampling Layers)
+        # Temperature branch (convolutional and upsampling Layers)
         self.conv_temp1 = nn.Conv2d(128, 64, kernel_size=3, stride=1, padding=1)  # Output: (64, 25, 25)
         self.conv_temp2 = nn.Conv2d(64, 32, kernel_size=3, stride=1, padding=1)   # Output: (32, 50, 50)
         self.conv_temp3 = nn.Conv2d(32, 1, kernel_size=3, stride=1, padding=1)    # Output: (1, 50, 50)

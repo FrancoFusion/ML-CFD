@@ -16,7 +16,7 @@ channel_geometry_test = torch.randn(num_test_samples, *matrix_size)
 pressure_drop_test = torch.randn(num_test_samples)
 temperature_test = torch.randn(num_test_samples, *matrix_size)
 
-# Save train data to a .pt file
+# Save train data
 torch.save({
     'heat_source': heat_source_train,
     'channel_geometry': channel_geometry_train,
@@ -24,7 +24,7 @@ torch.save({
     'temperature': temperature_train
 }, 'Data/M1_training_data.pt')
 
-# Save test data to a .pt file
+# Save test data
 torch.save({
     'heat_source': heat_source_test,
     'channel_geometry': channel_geometry_test,
