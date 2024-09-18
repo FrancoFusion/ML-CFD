@@ -1,23 +1,22 @@
 import torch
 
-def inspect_dataset(file_path):
-    data = torch.load(file_path)
+train_data = torch.load('Data/M1_training_data.pt')
+test_data = torch.load('Data/M1_testing_data.pt')
 
-    num_samples = len(data)
-    print(f'\n\n\nNumber of samples in {file_path}: {num_samples}\n')
+def print_dataset_info(data, dataset_name):
+    print(f"\n{dataset_name}")
+    print("-" * len(dataset_name))
+    print(f"Keys in the dataset: {list(data.keys())}")
 
-    sample = data[0]
-    print('Fields in each sample:')
-    for key in sample.keys():
-        print(f' - {key}')
+    num_samples = data['heat_source'].shape[0]
+    print(f"Number of samples: {num_samples}\n")
 
-    print('\nTensor sizes in the first sample:')
-    for key, value in sample.items():
-        if torch.is_tensor(value):
-            print(f'{key}: {tuple(value.size())}')
-        else:
-            print(f'{key}: Not a tensor, type is {type(value)}')
+    for key, tensor in data.items():
+        print(f"Variable: '{key}'")
+        print(f"  Shape: {tensor.shape}")
+        print(f"  Data type: {tensor.dtype}")
+        print(f"  Device: {tensor.device}")
+        print()
 
-if __name__ == '__main__':
-    inspect_dataset('Data/M1_train_data.pt')
-    inspect_dataset('Data/M1_test_data.pt')
+print_dataset_info(train_data, "Training data information")
+print_dataset_info(test_data, "Testing data information")

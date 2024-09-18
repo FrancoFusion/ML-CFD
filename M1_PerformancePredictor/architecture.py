@@ -1,96 +1,67 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchinfo import summary
 
-class PerformancePredictorNet(nn.Module):
+class HeatChannelNet(nn.Module):
     def __init__(self):
-        super(PerformancePredictorNet, self).__init__()
-
-        # Initial convolutional layers
-        self.conv1 = nn.Conv3d(2, 8, kernel_size=5, padding=1)
-        self.conv2 = nn.Conv3d(8, 16, kernel_size=5, padding=1)
-        self.conv3 = nn.Conv3d(16, 32, kernel_size=5, padding=1)
-        self.conv4 = nn.Conv3d(32, 64, kernel_size=5, padding=1)
-
-        # Global average pooling for scalar output (pressure_drop)
-        self.global_pool = nn.AdaptiveAvgPool3d(1)
-
-        # Fully connected layers for scalar output
-        self.fc1 = nn.Linear(64, 32)
-        self.fc2 = nn.Linear(32, 1)
-
-        # Deconvolutional layers for temperature output
-        self.deconv1 = nn.ConvTranspose3d(64, 32, kernel_size=5, padding=1)
-        self.deconv2 = nn.ConvTranspose3d(32, 16, kernel_size=5, padding=1)
-        self.deconv3 = nn.ConvTranspose3d(16, 8, kernel_size=5, padding=1)
-        self.deconv4 = nn.ConvTranspose3d(8, 1, kernel_size=5, padding=1)
-
-    def forward(self, heat_source, channel_geometry):        
-        # Concatenate along channel dimension
-        x = torch.cat([heat_source, channel_geometry], dim=1)  # Shape: [batch_size, 2, D, H, W]
+        super(HeatChannelNet, self).__init__()
 
         # Shared convolutional layers
-        x = F.relu(self.conv1(x))   # [batch_size, 8, D, H, W]
-        x = F.relu(self.conv2(x))   # [batch_size, 16, D, H, W]
-        x = F.relu(self.conv3(x))   # [batch_size, 32, D, H, W]
-        x = F.relu(self.conv4(x))   # [batch_size, 64, D, H, W]
+        self.conv1 = nn.Conv2d(in_channels=2, out_channels=16, kernel_size=3, stride=1, padding=1)  # Output: (16, 50, 50)
+        self.conv2 = nn.Conv2d(16, 32, kernel_size=3, stride=1, padding=1)  # Output: (32, 50, 50)
+        self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2)  # Output: (32, 25, 25)
+        self.conv3 = nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1)  # Output: (64, 25, 25)
+        self.conv4 = nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1)  # Output: (128, 25, 25)
+        self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2)  # Output: (128, 12, 12)
 
-        # Branch for pressure_drop (scalar output)
-        x_pool = self.global_pool(x)        # [batch_size, 64, 1, 1, 1]
-        x_flat = x_pool.view(-1, 64)        # Flatten to [batch_size, 64]
-        x_fc = F.relu(self.fc1(x_flat))     # [batch_size, 32]
-        pressure_drop = self.fc2(x_fc)      # [batch_size, 1]
+        # Pressure Drop Branch (Fully Connected Layers)
+        self.fc1 = nn.Linear(128 * 12 * 12, 256)
+        self.fc2 = nn.Linear(256, 64)
+        self.fc3 = nn.Linear(64, 1)  # Scalar output
 
-        # Branch for temperature output (3d tensor)
-        x_deconv = F.relu(self.deconv1(x))          # [batch_size, 32, D, H, W]
-        x_deconv = F.relu(self.deconv2(x_deconv))   # [batch_size, 16, D, H, W]
-        x_deconv = F.relu(self.deconv3(x_deconv))   # [batch_size, 8, D, H, W]
-        temperature = self.deconv4(x_deconv)        # [batch_size, 1, D, H, W]
+        # Temperature Branch (Convolutional and Upsampling Layers)
+        self.conv_temp1 = nn.Conv2d(128, 64, kernel_size=3, stride=1, padding=1)  # Output: (64, 25, 25)
+        self.conv_temp2 = nn.Conv2d(64, 32, kernel_size=3, stride=1, padding=1)   # Output: (32, 50, 50)
+        self.conv_temp3 = nn.Conv2d(32, 1, kernel_size=3, stride=1, padding=1)    # Output: (1, 50, 50)
 
-        return pressure_drop, temperature
+    def forward(self, heat_source, channel_geometry):
+        # Concatenate inputs along the channel dimension
+        x = torch.cat((heat_source, channel_geometry), dim=1)  # Shape: (batch_size, 2, 50, 50)
 
-"""
-if __name__ == '__main__':
-    net = PerformancePredictorNet()
+        # Shared convolutional layers
+        x = F.relu(self.conv1(x))    # Shape: (batch_size, 16, 50, 50)
+        x = F.relu(self.conv2(x))    # Shape: (batch_size, 32, 50, 50)
+        x = self.pool1(x)            # Shape: (batch_size, 32, 25, 25)
+        x = F.relu(self.conv3(x))    # Shape: (batch_size, 64, 25, 25)
+        x = F.relu(self.conv4(x))    # Shape: (batch_size, 128, 25, 25)
+        x = self.pool2(x)            # Shape: (batch_size, 128, 12, 12)
 
-    # Load test data
-    test_data = torch.load('Data/M1_test_data.pt')
+        # Pressure Drop Branch
+        x_flat = x.view(x.size(0), -1)        # Flatten: (batch_size, 128*12*12)
+        pd = F.relu(self.fc1(x_flat))         # Fully connected layers
+        pd = F.relu(self.fc2(pd))
+        pd = self.fc3(pd)                     # Output: (batch_size, 1)
 
-    # Define batch size
-    batch_size = 4
+        # Temperature Branch
+        temp = F.interpolate(x, size=(25, 25), mode='bilinear', align_corners=False)  # Upsample to (25, 25)
+        temp = F.relu(self.conv_temp1(temp))   # Shape: (batch_size, 64, 25, 25)
+        temp = F.interpolate(temp, scale_factor=2, mode='bilinear', align_corners=False)  # Upsample to (50, 50)
+        temp = F.relu(self.conv_temp2(temp))   # Shape: (batch_size, 32, 50, 50)
+        temp = self.conv_temp3(temp)           # Output: (batch_size, 1, 50, 50)
 
-    # Prepare lists to collect inputs
-    heat_sources = []
-    channel_geometries = []
+        return pd, temp
 
-    # Collect samples
-    for i in range(batch_size):
-        sample = test_data[i]
+if __name__ == "__main__":
+    model = HeatChannelNet()
 
-        # Prepare heat_source
-        heat_source = sample['heat_source']  # Shape: [D, H, W]
-        heat_source = heat_source.unsqueeze(0).unsqueeze(0)  # Shape: [1, 1, D, H, W]
-        heat_sources.append(heat_source)
-
-        # Prepare channel_geometry
-        channel_geometry = sample['channel_geometry']  # Shape: [D, H, W]
-        channel_geometry = channel_geometry.unsqueeze(0).unsqueeze(0)  # Shape: [1, 1, D, H, W]
-        channel_geometries.append(channel_geometry)
-
-    # Stack inputs along the batch dimension
-    heat_source_batch = torch.cat(heat_sources, dim=0)  # Shape: [batch_size, 1, D, H, W]
-    channel_geometry_batch = torch.cat(channel_geometries, dim=0)  # Shape: [batch_size, 1, D, H, W]
+    # One sample
+    test_data = torch.load('Data/M1_testing_data.pt')
+    heat_source_sample = test_data['heat_source'][0].unsqueeze(0).unsqueeze(0)              # Shape: (1, 1, 50, 50)
+    channel_geometry_sample = test_data['channel_geometry'][0].unsqueeze(0).unsqueeze(0)    # Shape: (1, 1, 50, 50)
 
     # Forward pass
-    pressure_drop_batch, temperature_batch = net(heat_source_batch, channel_geometry_batch)
+    pressure_drop_pred, temperature_pred = model(heat_source_sample, channel_geometry_sample)
 
-    # Output shapes
-    print('pressure_drop shape:', pressure_drop_batch.shape)  # Expected: [batch_size, 1]
-    print('temperature shape:', temperature_batch.shape)      # Expected: [batch_size, 1, D, H, W])
-
-    
-
-    # Print model summary
-    summary(net)
-"""
+    # Print output shapes
+    print('Pressure drop prediction shape:', pressure_drop_pred.shape)
+    print('Temperature prediction shape:', temperature_pred.shape)
