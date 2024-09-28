@@ -7,11 +7,11 @@ from loss_fcn import PerformanceCustomLoss
 
 # Training parameters
 LEARNING_RATE = 0.001
-NUM_EPOCHS = 20
+NUM_EPOCHS = 2
 BATCH_SIZE = 8
 
 model_net = HeatChannelNet()
-loss_fcn = PerformanceCustomLoss(alpha=1.0, beta=1.0)
+loss_fcn = PerformanceCustomLoss(alpha=0.5, beta=0.5)
 optimizer = optim.Adam(model_net.parameters(), lr=LEARNING_RATE)
 
 
@@ -34,8 +34,8 @@ class HeatChannelDataset(Dataset):
 
 
 # Load data
-train_data = torch.load('Data/M1_training_data.pt')
-test_data = torch.load('Data/M1_testing_data.pt')
+train_data = torch.load('Data/random_data/M1_training_data.pt')
+test_data = torch.load('Data/random_data/M1_testing_data.pt')
 
 # Create Dataset and DataLoader
 train_dataset = HeatChannelDataset(train_data)
