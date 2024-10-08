@@ -1,29 +1,3 @@
-"""## L1 approach:
-import torch
-import torch.nn as nn
-
-class PerformanceCustomLoss(nn.Module):
-    def __init__(self, alpha=0.5, beta=0.5):
-        super(PerformanceCustomLoss, self).__init__()
-        self.alpha = alpha
-        self.beta = beta
-        self.pressure_loss_fn = nn.L1Loss()
-    
-    def forward(self, pressure_pred, temperature_pred, pressure_true, temperature_true):
-        pressure_pred = pressure_pred.squeeze(1) 
-        temperature_pred = temperature_pred.squeeze(1) 
-
-        pressure_loss = self.pressure_loss_fn(pressure_pred, pressure_true)
-
-        temperature_diff = torch.abs(temperature_pred - temperature_true)
-        temperature_loss_per_sample = temperature_diff.sum(dim=[1, 2])
-
-        temperature_loss = temperature_loss_per_sample.mean()
-        total_loss = pressure_loss + temperature_loss
-        return total_loss"""
-
-
-
 import torch
 import torch.nn as nn
 
@@ -34,10 +8,6 @@ class PerformanceCustomLoss(nn.Module):
     def forward(self, pressure_pred, temperature_pred, pressure_true, temperature_true):
         pressure_pred = pressure_pred.squeeze(1)
         temperature_pred = temperature_pred.squeeze(1)
-        if pressure_true.dim() == 1:
-            pressure_true = pressure_true
-        else:
-            pressure_true = pressure_true.squeeze()
 
         pressure_loss = nn.MSELoss()(pressure_pred, pressure_true)
 

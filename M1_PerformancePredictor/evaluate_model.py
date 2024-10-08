@@ -5,6 +5,9 @@ from architecture import HeatChannelNet
 from matplotlib.colors import LinearSegmentedColormap
 import numpy as np
 
+test_data = torch.load('Data/M1_testing_data.pt')
+sample_index = 9
+
 color_stops = [
     (0.0,   (28/255, 29/255, 138/255)),
     (0.1355, (17/255, 67/255, 130/255)),
@@ -19,8 +22,6 @@ color_stops = [
 cmap_name = 'custom_blue_yellow_red'
 custom_cmap = LinearSegmentedColormap.from_list(cmap_name, color_stops)
 custom_cmap.set_bad(color='black')
-test_data = torch.load('Data/M1_testing_data.pt')
-sample_index = 2
 
 model_net = HeatChannelNet()
 model_net.load_state_dict(torch.load('M1_performance_predictor.pth'))
@@ -48,17 +49,17 @@ global_max = combined_temps.max()
 plt.figure(figsize=(12, 6))
 plt.subplot(1, 2, 1)
 im1 = plt.imshow(temperature_true_masked, cmap=custom_cmap, interpolation='nearest', vmin=global_min)
-plt.title('True Temperature')
+plt.title('True temperature')
 plt.colorbar(im1, fraction=0.046, pad=0.04)
 plt.subplot(1, 2, 2)
 im2 = plt.imshow(temperature_pred_masked, cmap=custom_cmap, interpolation='nearest', vmin=global_min)
-plt.title('Predicted Temperature')
+plt.title('Predicted temperature')
 plt.colorbar(im2, fraction=0.046, pad=0.04)
 plt.tight_layout()
 plt.show()
 plt.figure(figsize=(6, 6))
 channel_geometry_np = channel_geometry_sample.squeeze().cpu().numpy()
 plt.imshow(channel_geometry_np, interpolation='nearest')
-plt.title('Channel Geometry')
+plt.title('Channel geometry')
 plt.colorbar()
 plt.show()
