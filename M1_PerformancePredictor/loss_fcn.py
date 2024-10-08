@@ -1,4 +1,4 @@
-## L1 approach:
+"""## L1 approach:
 import torch
 import torch.nn as nn
 
@@ -20,12 +20,10 @@ class PerformanceCustomLoss(nn.Module):
 
         temperature_loss = temperature_loss_per_sample.mean()
         total_loss = pressure_loss + temperature_loss
-        return total_loss
+        return total_loss"""
 
 
 
-
-""" MSE APPROACH
 import torch
 import torch.nn as nn
 
@@ -34,31 +32,19 @@ class PerformanceCustomLoss(nn.Module):
         super(PerformanceCustomLoss, self).__init__()
 
     def forward(self, pressure_pred, temperature_pred, pressure_true, temperature_true):
-        # Adjust shapes to match
-        pressure_pred = pressure_pred.squeeze(1)  # Shape: [batch_size]
-        temperature_pred = temperature_pred.squeeze(1)  # Shape: [batch_size, 101, 215]
-
-        # Ensure pressure_true has the correct shape
+        pressure_pred = pressure_pred.squeeze(1)
+        temperature_pred = temperature_pred.squeeze(1)
         if pressure_true.dim() == 1:
-            pressure_true = pressure_true  # Shape: [batch_size]
+            pressure_true = pressure_true
         else:
-            pressure_true = pressure_true.squeeze()  # Shape: [batch_size]
+            pressure_true = pressure_true.squeeze()
 
-        # Compute MSE between pressure predictions and true values
         pressure_loss = nn.MSELoss()(pressure_pred, pressure_true)
 
-        # Compute element-wise squared differences for temperature
-        temperature_diff = temperature_pred - temperature_true  # Shape: [batch_size, 101, 215]
-        temperature_squared_diff = temperature_diff ** 2  # Element-wise squared differences
+        temperature_diff = temperature_pred - temperature_true
+        temperature_squared_diff = temperature_diff ** 2
+        temperature_loss_per_sample = temperature_squared_diff.sum(dim=[1, 2])
 
-        # Sum over the temperature matrix dimensions (1 and 2)
-        temperature_loss_per_sample = temperature_squared_diff.sum(dim=[1, 2])  # Shape: [batch_size]
-
-        # Compute the mean temperature loss over the batch
         temperature_loss = temperature_loss_per_sample.mean()
-
-        # Total loss is the sum of pressure loss and temperature loss
         total_loss = pressure_loss + temperature_loss
-
         return total_loss
-"""

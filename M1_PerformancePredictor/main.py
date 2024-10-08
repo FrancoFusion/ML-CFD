@@ -7,7 +7,7 @@ from loss_fcn import PerformanceCustomLoss
 # Training parameters
 LEARNING_RATE = 0.001
 NUM_EPOCHS = 10
-BATCH_SIZE = 8
+BATCH_SIZE = 10
 
 # Initialize model, loss function, optimizer
 model_net = HeatChannelNet()

@@ -41,14 +41,15 @@ class HeatChannelNet(nn.Module):
         pd = F.relu(self.fc1(x_flat))
         pd = F.relu(self.fc2(pd))
         pd = self.fc3(pd)
-        pd = torch.clamp(pd, min=0, max=2000)  # Ensuring pressure drop is between 0 and 2000
+        pd = 2000 * torch.sigmoid(pd)                   # Ensuring pressure drop is between 0 and 2000
 
         """ Temperature Branch """
         temp = F.relu(self.convT1(x))
         temp = F.relu(self.convT2(temp))
         temp = F.relu(self.convT3(temp))
         temp = self.conv_final(temp)
-        temp = torch.clamp(temp, min=298, max=600)  # Ensuring temperature is between 0 and 600
+        
+        temp = 298 + (600 - 298) * torch.sigmoid(temp)  # Ensuring output is between 298 and 600
 
         # Set corners to 0
         temp[:, :, 0:44, 0:17] = 0          # Top-left corner
@@ -57,6 +58,7 @@ class HeatChannelNet(nn.Module):
         temp[:, :, 57:101, 198:215] = 0     # Bottom-right corner
 
         return pd, temp
+
 
 """
 if __name__ == "__main__":
