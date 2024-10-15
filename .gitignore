@@ -37,6 +37,7 @@ MANIFEST
 *.spec
 *.pt
 *.pth
+*.csv
 
 # Installer logs
 pip-log.txt
