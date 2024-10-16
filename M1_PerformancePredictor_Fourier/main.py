@@ -11,7 +11,7 @@ print(f'Using device: {device}')
 
 # Training parameters
 LEARNING_RATE = 0.00005
-NUM_EPOCHS = 2
+NUM_EPOCHS = 150
 BATCH_SIZE = 16
 
 # Initialize model, loss function, optimizer
