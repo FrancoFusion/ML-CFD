@@ -5,8 +5,8 @@ from architecture import HeatChannelNet
 from matplotlib.colors import LinearSegmentedColormap
 import numpy as np
 
-test_data = torch.load('M1_testing_data.pt')
-sample_index = 32
+test_data = torch.load('Data/M1_testing_data.pt')
+sample_index = 28
 
 color_stops = [
     (0.0,   (28/255, 29/255, 138/255)),
@@ -41,15 +41,27 @@ with torch.no_grad():
     print('Predicted pressure drop:', pressure_drop_pred.item())
     print('True pressure drop:', pressure_drop_true.item())
     
+    # Set corners to 0
+    temperature_pred[:, :, 0:44, 0:17] = 0          # Top-left corner
+    temperature_pred[:, :, 57:101, 0:17] = 0        # Bottom-left corner
+    temperature_pred[:, :, 0:44, 198:215] = 0       # Top-right corner
+    temperature_pred[:, :, 57:101, 198:215] = 0     # Bottom-right corner
+    
     temperature_pred_np = temperature_pred.squeeze().cpu().numpy()
     temperature_true_np = temperature_true.cpu().numpy()
     
-    global_min = temperature_true_np.min()
-    global_max = temperature_true_np.max()
+    temperature_pred_masked = np.ma.masked_where(
+        temperature_pred_np == 0, temperature_pred_np
+    )
+    temperature_true_masked = np.ma.masked_where(
+        temperature_true_np == 0, temperature_true_np
+    )
+    global_min = temperature_true_masked.min()
+    global_max = temperature_true_masked.max()
     plt.figure(figsize=(12, 6))
     plt.subplot(1, 2, 1)
     im1 = plt.imshow(
-        temperature_true_np,
+        temperature_true_masked,
         cmap=custom_cmap,
         interpolation='nearest',
         vmin=global_min
@@ -58,7 +70,7 @@ with torch.no_grad():
     plt.colorbar(im1, fraction=0.046, pad=0.04)
     plt.subplot(1, 2, 2)
     im2 = plt.imshow(
-        temperature_pred_np,
+        temperature_pred_masked,
         cmap=custom_cmap,
         interpolation='nearest'
     )

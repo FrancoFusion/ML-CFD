@@ -3,13 +3,15 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 from architecture import HeatChannelNet
 from loss_fcn import PerformanceCustomLoss
+import time
+import csv
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f'Using device: {device}')
 
 # Training parameters
 LEARNING_RATE = 0.00005
-NUM_EPOCHS = 150
+NUM_EPOCHS = 2
 BATCH_SIZE = 16
 
 # Initialize model, loss function, optimizer
@@ -39,8 +41,8 @@ class HeatChannelDataset(Dataset):
         }
 
 # Load data
-train_data = torch.load('Data/M1_training_data.pt')
-test_data = torch.load('Data/M1_testing_data.pt')
+train_data = torch.load('M1_training_data.pt')
+test_data = torch.load('M1_testing_data.pt')
 
 # Create Dataset and DataLoader
 train_dataset = HeatChannelDataset(train_data)
@@ -98,10 +100,29 @@ def test(model_net, test_loader, loss_fcn):
     return avg_test_loss
 
 # Training
+start_time = time.time()
+train_losses = []
+test_losses = []
+
 for epoch in range(NUM_EPOCHS):
     train_loss = train(model_net, train_loader, loss_fcn, optimizer)
     test_loss = test(model_net, test_loader, loss_fcn)
     print(f'Epoch {epoch + 1} | Train Loss: {train_loss:.4f} | Test Loss: {test_loss:.4f}')
+    train_losses.append(train_loss)
+    test_losses.append(test_loss)
 
-# Save the trained model
+end_time = time.time()
+total_training_time = end_time - start_time
+
+with open('losses.csv', 'w', newline='') as csvfile:
+    csvwriter = csv.writer(csvfile)
+    csvwriter.writerow(['Epoch', 'Train loss', 'Test loss'])
+    for epoch in range(NUM_EPOCHS):
+        csvwriter.writerow([epoch + 1, train_losses[epoch], test_losses[epoch]])
+
+with open('training_time.csv', 'w', newline='') as csvfile:
+    csvwriter = csv.writer(csvfile)
+    csvwriter.writerow(['Total training time (seconds)'])
+    csvwriter.writerow([total_training_time])
+
 torch.save(model_net.state_dict(), 'M1_performance_predictor.pth')

@@ -4,14 +4,17 @@ from torch.utils.data import DataLoader, Dataset
 from architecture import HeatChannelNet
 from loss_fcn import PerformanceCustomLoss
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f'Using device: {device}')
+
 # Training parameters
-LEARNING_RATE = 0.001
-NUM_EPOCHS = 4
-BATCH_SIZE = 8
+LEARNING_RATE = 0.00005
+NUM_EPOCHS = 150
+BATCH_SIZE = 16
 
 # Initialize model, loss function, optimizer
-model_net = HeatChannelNet()
-loss_fcn = PerformanceCustomLoss(alpha=0.5, beta=0.5)
+model_net = HeatChannelNet().to(device)
+loss_fcn = PerformanceCustomLoss(alpha=1, beta=1)
 optimizer = optim.Adam(model_net.parameters(), lr=LEARNING_RATE)
 
 # Custom Dataset class
@@ -51,12 +54,12 @@ def train(model_net, train_loader, loss_fcn, optimizer):
     model_net.train()
     running_loss = 0.0
     for batch_idx, batch in enumerate(train_loader):
-        # Get data
-        heat_source = batch['heat_source']
-        channel_geometry = batch['channel_geometry']
-        inlet_velocity = batch['inlet_velocity']
-        pressure_true = batch['pressure_drop']
-        temperature_true = batch['temperature']
+        # Move data to device
+        heat_source = batch['heat_source'].to(device)
+        channel_geometry = batch['channel_geometry'].to(device)
+        inlet_velocity = batch['inlet_velocity'].to(device)
+        pressure_true = batch['pressure_drop'].to(device)
+        temperature_true = batch['temperature'].to(device)
 
         optimizer.zero_grad()
 
@@ -78,11 +81,12 @@ def test(model_net, test_loader, loss_fcn):
     test_loss = 0.0
     with torch.no_grad():
         for batch in test_loader:
-            heat_source = batch['heat_source']
-            channel_geometry = batch['channel_geometry']
-            inlet_velocity = batch['inlet_velocity']
-            pressure_true = batch['pressure_drop']
-            temperature_true = batch['temperature']
+            # Move data to device
+            heat_source = batch['heat_source'].to(device)
+            channel_geometry = batch['channel_geometry'].to(device)
+            inlet_velocity = batch['inlet_velocity'].to(device)
+            pressure_true = batch['pressure_drop'].to(device)
+            temperature_true = batch['temperature'].to(device)
 
             # Forward pass with all three inputs
             pressure_pred, temperature_pred = model_net(heat_source, channel_geometry, inlet_velocity)
@@ -99,4 +103,5 @@ for epoch in range(NUM_EPOCHS):
     test_loss = test(model_net, test_loader, loss_fcn)
     print(f'Epoch {epoch + 1} | Train Loss: {train_loss:.4f} | Test Loss: {test_loss:.4f}')
 
+# Save the trained model
 torch.save(model_net.state_dict(), 'M1_performance_predictor.pth')

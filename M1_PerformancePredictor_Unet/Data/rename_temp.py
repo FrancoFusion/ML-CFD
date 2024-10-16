@@ -1,6 +1,6 @@
 import os
 
-os.chdir('Data/tables')
+os.chdir('Data/400Samples')
 
 filenames = os.listdir('.')
 
