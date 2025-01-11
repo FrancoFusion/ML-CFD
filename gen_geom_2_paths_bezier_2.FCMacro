@@ -1,0 +1,200 @@
+import FreeCAD
+import Part
+from FreeCAD import Vector, Rotation, Placement
+import random
+import math
+import FreeCADGui
+
+# Create a new FreeCAD document
+DOC = FreeCAD.ActiveDocument
+if DOC is None:
+    DOC = FreeCAD.newDocument("PlateWithBezierPaths")
+
+# Plate vertices on the ZY plane
+plate_vertices = [
+    (0, 0, 0),
+    (0, 180, 0),
+    (0, 180, 43.5),
+    (0, 197, 43.5),
+    (0, 197, 56.5),
+    (0, 180, 56.5),
+    (0, 180, 100),
+    (0, 0, 100),
+    (0, 0, 56.5),
+    (0, -17, 56.5),
+    (0, -17, 43.5),
+    (0, 0, 43.5)
+]
+
+# Create edges between consecutive vertices
+edges = []
+num_vertices = len(plate_vertices)
+for i in range(num_vertices):
+    start = plate_vertices[i]
+    end = plate_vertices[(i + 1) % num_vertices]
+    edge = Part.makeLine(Vector(*start), Vector(*end))
+    edges.append(edge)
+
+# Create a wire and face from the edges
+wire = Part.Wire(edges)
+face = Part.Face(wire)
+
+# Extrude the face to create the plate solid in the positive X direction
+plate_thickness = 3  # Thickness of the plate
+plate_solid = face.extrude(Vector(plate_thickness, 0, 0))
+
+# Add the plate solid to the document
+plate_obj = DOC.addObject("Part::Feature", "Plate")
+plate_obj.Shape = plate_solid
+
+# Define the common path points on the top surface of the plate (X=3 mm)
+x_top_surface = plate_thickness  # X coordinate of the top surface
+start_point = (x_top_surface, -17, 50)
+first_permanent_point = (x_top_surface, 10, 50)
+second_permanent_point = (x_top_surface, 170, 50)
+end_point = (x_top_surface, 197, 50)
+
+# Common parameters for random point generation
+num_random_points = 10
+y_min, y_max = 30, 150  # Y bounds with margin from the sides of the plate
+z_min_path1, z_max_path1 = 10, 50  # Z bounds for Path 1 (lower side of the plate)
+z_min_path2, z_max_path2 = 50, 95  # Z bounds for Path 2 (upper side of the plate)
+min_spacing = 20  # Minimum distance between consecutive points
+offset_z = 10  # Offset along Z-axis for the second path
+
+def generate_random_points(num_points, y_min, y_max, z_min, z_max, min_spacing, z_offset=0):
+    random_points = []
+    while len(random_points) < num_points:
+        y = random.uniform(y_min, y_max)
+        z = random.uniform(z_min, z_max) + z_offset
+        new_point = (x_top_surface, y, z)
+        # Check distance to the last accepted point
+        if random_points:
+            last_point = random_points[-1]
+            distance = math.sqrt((new_point[1] - last_point[1])**2 + (new_point[2] - last_point[2])**2)
+            if distance < min_spacing:
+                continue  # Skip this point if too close
+        random_points.append(new_point)
+    # Sort random points by Y value to maintain order along the Y-axis
+    random_points.sort(key=lambda point: point[1])
+    return random_points
+
+# Generate random points for both paths with separate Z ranges
+random_points1 = generate_random_points(num_random_points, y_min, y_max, z_min_path1, z_max_path1, min_spacing)
+random_points2 = generate_random_points(num_random_points, y_min, y_max, z_min_path2, z_max_path2, min_spacing, z_offset=offset_z)
+
+# Create Path 1 with straight segments and Bezier Curve
+edge1_1 = Part.makeLine(Vector(*start_point), Vector(*first_permanent_point))
+bezier_curve1 = Part.BezierCurve()
+control_points1 = [first_permanent_point] + random_points1 + [second_permanent_point]
+bezier_curve1.setPoles([Vector(*pt) for pt in control_points1])
+bezier_edge1 = bezier_curve1.toShape()
+edge3_1 = Part.makeLine(Vector(*second_permanent_point), Vector(*end_point))
+path_edges1 = [edge1_1, bezier_edge1, edge3_1]
+path_wire1 = Part.Wire(path_edges1)
+path_obj1 = DOC.addObject("Part::Feature", "BezierPath1")
+path_obj1.Shape = path_wire1
+
+# Create Path 2 with straight segments and Bezier Curve (with offset along Z-axis)
+edge1_2 = Part.makeLine(Vector(*start_point), Vector(*first_permanent_point))
+bezier_curve2 = Part.BezierCurve()
+control_points2 = [first_permanent_point] + random_points2 + [second_permanent_point]
+bezier_curve2.setPoles([Vector(*pt) for pt in control_points2])
+bezier_edge2 = bezier_curve2.toShape()
+edge3_2 = Part.makeLine(Vector(*second_permanent_point), Vector(*end_point))
+path_edges2 = [edge1_2, bezier_edge2, edge3_2]
+path_wire2 = Part.Wire(path_edges2)
+path_obj2 = DOC.addObject("Part::Feature", "BezierPath2")
+path_obj2.Shape = path_wire2
+
+# Add the paths to the document
+path_obj1.ViewObject.Visibility = False
+path_obj2.ViewObject.Visibility = False
+
+# Rectangle profile which is used for the sweep operation
+profile_width = 10  # Total width (5 mm on each side of the path)
+profile_height = 1.5  # Height (depth into the plate)
+
+# Define the rectangle in the XZ plane, centered at the path
+p1 = Vector(profile_height, 0, -profile_width / 2)
+p2 = Vector(0, 0, -profile_width / 2)
+p3 = Vector(0, 0, profile_width / 2)
+p4 = Vector(profile_height, 0, profile_width / 2)
+
+# Create edges of the rectangle
+rect_edges = [
+    Part.makeLine(p1, p2),
+    Part.makeLine(p2, p3),
+    Part.makeLine(p3, p4),
+    Part.makeLine(p4, p1)
+]
+
+# Make a wire from edges
+rectangle_wire = Part.Wire(rect_edges)
+
+# Profile for Path 1
+rect_placement1 = Placement(Vector(*start_point), Rotation(Vector(0, 1, 0), -180))
+profile1 = rectangle_wire.copy()
+profile1.Placement = rect_placement1
+profile_obj1 = DOC.addObject("Part::Feature", "Profile1")
+profile_obj1.Shape = profile1
+
+# Profile for Path 2
+profile2 = rectangle_wire.copy()
+profile2.Placement = rect_placement1  # Same placement as Profile1
+profile_obj2 = DOC.addObject("Part::Feature", "Profile2")
+profile_obj2.Shape = profile2
+
+# Perform the sweeps
+sweep_obj1 = DOC.addObject("Part::Sweep", "Sweep1")
+sweep_obj1.Sections = [profile_obj1]
+sweep_obj1.Spine = path_obj1
+sweep_obj1.Solid = True
+sweep_obj1.Frenet = False
+
+sweep_obj2 = DOC.addObject("Part::Sweep", "Sweep2")
+sweep_obj2.Sections = [profile_obj2]
+sweep_obj2.Spine = path_obj2
+sweep_obj2.Solid = True
+sweep_obj2.Frenet = False
+
+DOC.recompute()
+
+# Fuse the two sweeps into one fluid part
+fluid_obj = DOC.addObject("Part::Fuse", "Fluid")
+fluid_obj.Base = sweep_obj1
+fluid_obj.Tool = sweep_obj2
+
+DOC.recompute()
+
+# Create a copy of the fluid object to retain it in the document
+fluid_copy = DOC.addObject("Part::Feature", "FluidCopy")
+fluid_copy.Shape = fluid_obj.Shape
+fluid_copy.ViewObject.Visibility = True
+# Hide the edges of the fluid copy object
+fluid_copy.ViewObject.DisplayMode = "Shaded"
+#fluid_copy.ViewObject.LineWidth = 1  # Optional: Set line width to 0 to hide edges completely
+
+
+# Perform a Boolean cut to remove the intersecting part from the plate
+cut_obj = DOC.addObject("Part::Cut", "PlateWithFluidCut")
+cut_obj.Base = plate_obj
+cut_obj.Tool = fluid_obj
+DOC.recompute()
+
+# Make sure both the carved plate and the fluid part are visible as separate objects
+cut_obj.ViewObject.Visibility = True
+fluid_copy.ViewObject.Visibility = True
+
+# Get the active 3D view
+view = FreeCADGui.ActiveDocument.ActiveView
+
+# Set the view direction
+view.setViewDirection(FreeCAD.Vector(-1, 0, 0))
+
+# fit all objects in the view
+view.fitAll()
+
+view.viewAxometric()
+
+DOC.recompute()
